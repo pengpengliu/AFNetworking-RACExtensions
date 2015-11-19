@@ -34,7 +34,9 @@
 			}
 #endif
 		} failure:^(id operation, NSError *error) {
-			[subject sendError:error];
+            NSError *err = [AFURLConnectionOperation errorFromRequestOperation:operation];
+            
+            [subject sendError:err?:error];
 #ifdef RAFN_MAINTAIN_COMPLETION_BLOCKS
 			if (oldCompBlock) {
 				oldCompBlock();
@@ -48,5 +50,26 @@
 	return subject;
 }
 
+#pragma mark - Error Handling
+
++ (NSError *)errorFromRequestOperation:(AFHTTPRequestOperation *)operation {
+    NSParameterAssert(operation != nil);
+    
+    NSDictionary *responseDictionary = nil;
+    
+    if ([operation.responseObject isKindOfClass:[NSDictionary class]]) {
+        responseDictionary = operation.responseObject;
+    } else {
+        return nil;
+    }
+    
+    NSInteger code = [responseDictionary[@"code"] integerValue];
+    
+    NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+    
+    userInfo[NSLocalizedDescriptionKey] = responseDictionary[@"error"];
+    
+    return [NSError errorWithDomain:@"WEClientErrorDomain" code:code userInfo:userInfo];
+}
 
 @end
